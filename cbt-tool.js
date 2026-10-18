@@ -1,0 +1,136 @@
+(() => {
+    if (window.CBTX) return;
+    window.CBTX = 1;
+
+    // Bypass Anti-Cheat
+    window.handleAntiCheatViolation = function () {};
+    ['contextmenu', 'copy', 'cut', 'paste', 'keydown', 'visibilitychange', 'blur'].forEach(ev => {
+        window.addEventListener(ev, e => e.stopImmediatePropagation(), true);
+    });
+    const mc = document.getElementById('cheat-modal');
+    if (mc) mc.classList.add('hidden');
+
+    const d = document,
+          Q = () => examQuestions[currentQuestionIndex] || CBTToolsData.questions[CBTToolsData.index],
+          O = () => d.querySelectorAll('#options-container label, #options-container .option-card'),
+          X = () => d.querySelectorAll('#options-container .category-row');
+
+    // Buat Panel Modal Asisten AI
+    let p = d.createElement('div');
+    p.id = 'cbtx-modal';
+    p.style = 'display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;width:90%;max-width:380px;padding:20px;border-radius:24px;box-shadow:0 10px 30px rgba(0,0,0,0.2);font-family:system-ui,sans-serif;';
+    p.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="background:#e0e7ff;color:#4338ca;padding:8px 10px;border-radius:50%;font-size:16px;">🤖</div>
+                <div>
+                    <b style="font-size:16px;color:#1e293b;display:block;">Asisten AI</b>
+                    <span style="font-size:12px;color:#10b981;">● Siap membantu</span>
+                </div>
+            </div>
+            <button id="cbtx-close" style="background:none;border:none;font-size:20px;color:#64748b;cursor:pointer;">&times;</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+            <div id="btn-mark" style="background:#eff6ff;border:1px solid #bfdbfe;padding:14px;border-radius:16px;cursor:pointer;">
+                <div style="color:#2563eb;font-size:18px;margin-bottom:6px;">🎯</div>
+                <div style="font-weight:bold;font-size:13px;color:#1e40af;">Jawab Soal Ini</div>
+                <div style="font-size:11px;color:#60a5fa;">Tandai soal aktif</div>
+            </div>
+            <div id="btn-auto" style="background:#f5f3ff;border:1px solid #ddd6fe;padding:14px;border-radius:16px;cursor:pointer;">
+                <div style="color:#7c3aed;font-size:18px;margin-bottom:6px;">⚡</div>
+                <div style="font-weight:bold;font-size:13px;color:#6d28d9;">Kerjakan Semua</div>
+                <div style="font-size:11px;color:#a78bfa;">30 soal otomatis</div>
+            </div>
+        </div>
+        <div id="btn-key" style="background:#ecfdf5;border:1px solid #a7f3d0;padding:12px 14px;border-radius:16px;cursor:pointer;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+                <div style="font-weight:bold;font-size:13px;color:#047857;">🔑 Lihat Kunci</div>
+                <div style="font-size:11px;color:#059669;">Tampilkan kunci jawaban</div>
+            </div>
+            <span style="font-size:16px;">➡️</span>
+        </div>
+        <pre id="cbtx-status" style="background:#f8fafc;padding:10px;border-radius:12px;font-size:11px;color:#334155;max-height:100px;overflow-y:auto;white-space:pre-line;margin:0;"></pre>
+    `;
+    d.body.append(p);
+
+    // Hubungkan dengan ikon topi toga di pojok kiri atas header
+    const cap = d.querySelector('.fa-graduation-cap');
+    if (cap && cap.parentElement) {
+        let pr = cap.parentElement;
+        pr.style.position = 'relative';
+        pr.style.cursor = 'pointer';
+        pr.title = 'Klik untuk buka Asisten AI';
+        pr.onclick = () => p.style.display = p.style.display === 'block' ? 'none' : 'block';
+    }
+
+    p.querySelector('#cbtx-close').onclick = () => p.style.display = 'none';
+    let s = p.querySelector('#cbtx-status');
+
+    function key() {
+        let q = Q(), c = q.correct;
+        if (q.type === 'category') s.textContent = c.map((v, i) => i + 1 + '. ' + (v ? 'Benar' : 'Salah')).join('\n');
+        else s.textContent = 'Kunci: ' + (Array.isArray(c) ? c.map(i => String.fromCharCode(65 + i)).join(', ') : String.fromCharCode(65 + c));
+    }
+
+    function mark() {
+        d.querySelectorAll('.cbtxg').forEach(e => e.classList.remove('cbtxg'));
+        let q = Q(), c = q.correct;
+        if (q.type === 'category') {
+            X().forEach((r, j) => [...r.querySelectorAll('label')].forEach(l => {
+                let v = l.querySelector('input')?.value === 'true';
+                if (v === c[j]) l.classList.add('cbtxg');
+            }));
+        } else {
+            let opts = O();
+            let correctArr = Array.isArray(c) ? c : [c];
+            correctArr.forEach(j => { if (opts[j]) opts[j].classList.add('cbtxg'); });
+        }
+        s.textContent = 'Jawaban benar telah ditandai.';
+    }
+
+    function ans() {
+        let q = Q(), c = q.correct;
+        let correctArr = Array.isArray(c) ? c : [c];
+        let radio = d.querySelectorAll('#options-container input[type="radio"]');
+        if (radio.length > 0 && correctArr.length > 0) {
+            if (radio[correctArr[0]]) radio[correctArr[0]].click();
+        } else {
+            let opts = O();
+            correctArr.forEach(j => { if (opts[j]) opts[j].click(); });
+        }
+    }
+
+    let st = d.createElement('style');
+    st.textContent = '.cbtxg{border-color:#22c55e!important;background:#f0fdf4!important;}';
+    d.head.append(st);
+
+    p.querySelector('#btn-key').onclick = key;
+    p.querySelector('#btn-mark').onclick = mark;
+
+    let r = 0;
+    p.querySelector('#btn-auto').onclick = () => {
+        if (r) return;
+        r = 1;
+        s.textContent = "Menjalankan auto jawab...";
+        (function n() {
+            ans();
+            setTimeout(() => {
+                let idx = typeof currentQuestionIndex !== 'undefined' ? currentQuestionIndex : (typeof CBTToolsData !== 'undefined' ? CBTToolsData.index : 0);
+                if (idx < 29 && typeof nextQuestion === 'function') {
+                    nextQuestion();
+                    setTimeout(n, 450);
+                } else if (idx < 29 && typeof CBTToolsAPI !== 'undefined' && CBTToolsAPI.next) {
+                    CBTToolsAPI.next();
+                    setTimeout(n, 450);
+                } else {
+                    r = 0;
+                    mark();
+                    s.textContent = "Selesai otomatis!";
+                }
+            }, 550);
+        })();
+    };
+
+    // Otomatis langsung buka panel setelah script di-load dari GitHub
+    p.style.display = 'block';
+})();
