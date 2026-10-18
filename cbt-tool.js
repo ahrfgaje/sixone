@@ -15,10 +15,21 @@
           O = () => d.querySelectorAll('#options-container label, #options-container .option-card'),
           X = () => d.querySelectorAll('#options-container .category-row');
 
-    // Buat Panel Modal Asisten AI
+    // Tambahkan CSS Keyframes untuk Animasi Slide Up dari Bawah
+    let st = d.createElement('style');
+    st.textContent = `
+        @keyframes slideUp {
+            from { transform: translate(-50%, 40px); opacity: 0; }
+            to { transform: translate(-50%, -50%); opacity: 1; }
+        }
+        .cbtxg { border-color: #22c55e !important; background: #f0fdf4 !important; }
+    `;
+    d.head.append(st);
+
+    // Buat Panel Modal Asisten AI dengan Tampilan Baru & Animasi
     let p = d.createElement('div');
     p.id = 'cbtx-modal';
-    p.style = 'display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;width:90%;max-width:380px;padding:20px;border-radius:24px;box-shadow:0 10px 30px rgba(0,0,0,0.2);font-family:system-ui,sans-serif;';
+    p.style = 'display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;width:90%;max-width:380px;padding:20px;border-radius:24px;box-shadow:0 10px 30px rgba(0,0,0,0.2);font-family:system-ui,sans-serif;animation:slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);';
     p.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
             <div style="display:flex;align-items:center;gap:10px;">
@@ -42,10 +53,22 @@
                 <div style="font-size:11px;color:#a78bfa;">30 soal otomatis</div>
             </div>
         </div>
-        <div id="btn-key" style="background:#ecfdf5;border:1px solid #a7f3d0;padding:12px 14px;border-radius:16px;cursor:pointer;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
+        <!-- FITUR BARU: AUTO DI ATAS KKM -->
+        <div id="btn-kkm-box" style="background:#ecfdf5;border:1px solid #a7f3d0;padding:12px 14px;border-radius:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
+            <div id="btn-kkm" style="cursor:pointer;flex-grow:1;">
+                <div style="font-weight:bold;font-size:13px;color:#047857;">🏆 Auto di atas KKM</div>
+                <div style="font-size:11px;color:#059669;">Skor sedikit di atas target</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;background:#fff;padding:4px 8px;border-radius:10px;border:1px solid #d1fae5;">
+                <button id="kkm-minus" style="border:none;background:#e2e8f0;width:24px;height:24px;border-radius:6px;font-weight:bold;cursor:pointer;">-</button>
+                <span id="kkm-value" style="font-weight:bold;font-size:13px;color:#047857;min-width:20px;text-align:center;">75</span>
+                <button id="kkm-plus" style="border:none;background:#e2e8f0;width:24px;height:24px;border-radius:6px;font-weight:bold;cursor:pointer;">+</button>
+            </div>
+        </div>
+        <div id="btn-key" style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px 14px;border-radius:16px;cursor:pointer;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
             <div>
-                <div style="font-weight:bold;font-size:13px;color:#047857;">🔑 Lihat Kunci</div>
-                <div style="font-size:11px;color:#059669;">Tampilkan kunci jawaban</div>
+                <div style="font-weight:bold;font-size:13px;color:#334155;">🔑 Lihat Kunci</div>
+                <div style="font-size:11px;color:#64748b;">Tampilkan kunci jawaban</div>
             </div>
             <span style="font-size:16px;">➡️</span>
         </div>
@@ -65,6 +88,20 @@
 
     p.querySelector('#cbtx-close').onclick = () => p.style.display = 'none';
     let s = p.querySelector('#cbtx-status');
+
+    // Logika Pengaturan Nilai KKM (+ dan -)
+    let targetKKM = 75;
+    const kkmValSpan = p.querySelector('#kkm-value');
+    p.querySelector('#kkm-plus').onclick = (e) => {
+        e.stopPropagation();
+        if (targetKKM < 95) targetKKM += 5;
+        kkmValSpan.textContent = targetKKM;
+    };
+    p.querySelector('#kkm-minus').onclick = (e) => {
+        e.stopPropagation();
+        if (targetKKM > 40) targetKKM -= 5;
+        kkmValSpan.textContent = targetKKM;
+    };
 
     function key() {
         let q = Q(), c = q.correct;
@@ -88,42 +125,54 @@
         s.textContent = 'Jawaban benar telah ditandai.';
     }
 
-    function ans() {
+    function ans(shouldBeCorrect = true) {
         let q = Q(), c = q.correct;
         let correctArr = Array.isArray(c) ? c : [c];
         let radio = d.querySelectorAll('#options-container input[type="radio"]');
-        if (radio.length > 0 && correctArr.length > 0) {
-            if (radio[correctArr[0]]) radio[correctArr[0]].click();
+        
+        let targetIndex = correctArr[0];
+        if (!shouldBeCorrect && radio.length > 1) {
+            // Pilih opsi yang sengaja salah agar skor pas di atas KKM
+            targetIndex = (correctArr[0] + 1) % radio.length;
+        }
+
+        if (radio.length > 0) {
+            if (radio[targetIndex]) radio[targetIndex].click();
         } else {
             let opts = O();
-            correctArr.forEach(j => { if (opts[j]) opts[j].click(); });
+            if (opts[targetIndex]) opts[targetIndex].click();
         }
     }
 
-    let st = d.createElement('style');
-    st.textContent = '.cbtxg{border-color:#22c55e!important;background:#f0fdf4!important;}';
-    d.head.append(st);
+    // Variabel kontrol status Auto (bisa di-stop saat diklik lagi)
+    let isAutoRunning = false;
+    let isKKMRunning = false;
 
-    p.querySelector('#btn-key').onclick = key;
-    p.querySelector('#btn-mark').onclick = mark;
-
-    let r = 0;
     p.querySelector('#btn-auto').onclick = () => {
-        if (r) return;
-        r = 1;
-        s.textContent = "Menjalankan auto jawab...";
+        if (isAutoRunning) {
+            isAutoRunning = false;
+            p.querySelector('#btn-auto').style.background = '#f5f3ff';
+            s.textContent = "Proses otomatis dihentikan.";
+            return;
+        }
+        if (isKKMRunning) return;
+
+        isAutoRunning = true;
+        p.querySelector('#btn-auto').style.background = '#ddd6fe';
+        s.textContent = "Menjalankan auto 30 soal (Klik lagi untuk berhenti)...";
+
         (function n() {
-            ans();
+            if (!isAutoRunning) return;
+            ans(true);
             setTimeout(() => {
                 let idx = typeof currentQuestionIndex !== 'undefined' ? currentQuestionIndex : (typeof CBTToolsData !== 'undefined' ? CBTToolsData.index : 0);
-                if (idx < 29 && typeof nextQuestion === 'function') {
-                    nextQuestion();
-                    setTimeout(n, 450);
-                } else if (idx < 29 && typeof CBTToolsAPI !== 'undefined' && CBTToolsAPI.next) {
-                    CBTToolsAPI.next();
+                if (idx < 29 && isAutoRunning) {
+                    if (typeof nextQuestion === 'function') nextQuestion();
+                    else if (typeof CBTToolsAPI !== 'undefined' && CBTToolsAPI.next) CBTToolsAPI.next();
                     setTimeout(n, 450);
                 } else {
-                    r = 0;
+                    isAutoRunning = false;
+                    p.querySelector('#btn-auto').style.background = '#f5f3ff';
                     mark();
                     s.textContent = "Selesai otomatis!";
                 }
@@ -131,6 +180,49 @@
         })();
     };
 
-    // Otomatis langsung buka panel setelah script di-load dari GitHub
+    // Logika Eksekusi Tombol "Auto di atas KKM"
+    p.querySelector('#btn-kkm').onclick = () => {
+        if (isKKMRunning) {
+            isKKMRunning = false;
+            p.querySelector('#btn-kkm-box').style.background = '#ecfdf5';
+            s.textContent = "Proses KKM dihentikan.";
+            return;
+        }
+        if (isAutoRunning) return;
+
+        isKKMRunning = true;
+        p.querySelector('#btn-kkm-box').style.background = '#a7f3d0';
+        s.textContent = `Menjalankan auto target KKM ${targetKKM}...`;
+
+        let totalSoal = 30; // Umumnya 30 soal
+        let targetBenar = Math.ceil((targetKKM / 100) * totalSoal) + 1; // Dilebihkan 1 soal agar aman di atas KKM
+
+        (function loopKKM(currentIndex = 0) {
+            if (!isKKMRunning) return;
+
+            // Tentukan apakah soal ini harus dijawab benar atau salah berdasarkan target KKM
+            let shouldBeCorrect = currentIndex < targetBenar;
+            ans(shouldBeCorrect);
+
+            setTimeout(() => {
+                let idx = typeof currentQuestionIndex !== 'undefined' ? currentQuestionIndex : (typeof CBTToolsData !== 'undefined' ? CBTToolsData.index : 0);
+                if (idx < totalSoal - 1 && isKKMRunning) {
+                    if (typeof nextQuestion === 'function') nextQuestion();
+                    else if (typeof CBTToolsAPI !== 'undefined' && CBTToolsAPI.next) CBTToolsAPI.next();
+                    setTimeout(() => loopKKM(idx + 1), 450);
+                } else {
+                    isKKMRunning = false;
+                    p.querySelector('#btn-kkm-box').style.background = '#ecfdf5';
+                    mark();
+                    s.textContent = `Selesai! Skor disesuaikan di atas KKM ${targetKKM}.`;
+                }
+            }, 550);
+        })();
+    };
+
+    p.querySelector('#btn-key').onclick = key;
+    p.querySelector('#btn-mark').onclick = mark;
+
+    // Otomatis langsung buka panel dengan animasi saat script dimuat
     p.style.display = 'block';
 })();
