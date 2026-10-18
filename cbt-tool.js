@@ -1,4 +1,3 @@
-
 (() => {
     if (window.CBTX) return;
     window.CBTX = true;
@@ -6,7 +5,7 @@
     const d = document;
 
     // ==========================================
-    // 1. ANTI-CHEAT & HELPER FUNCTIONS
+    // 1. HELPER FUNCTIONS
     // ==========================================
     window.handleAntiCheatViolation = function () {};
 
@@ -25,29 +24,171 @@
     const mc = d.getElementById('cheat-modal');
     if (mc) mc.classList.add('hidden');
 
-    const Q = () =>
-        (typeof examQuestions !== 'undefined' &&
-         examQuestions[currentQuestionIndex]) ||
-        (typeof CBTToolsData !== 'undefined' &&
-         CBTToolsData.questions[CBTToolsData.index]);
+    const Q = () => {
+        try {
+            if (
+                typeof examQuestions !== 'undefined' &&
+                Array.isArray(examQuestions) &&
+                examQuestions[currentQuestionIndex]
+            ) {
+                return examQuestions[currentQuestionIndex];
+            }
+        } catch (_) {}
 
-    const O = () =>
-        d.querySelectorAll(
-            '#options-container label, #options-container .option-card'
-        );
+        try {
+            if (
+                typeof CBTToolsData !== 'undefined' &&
+                Array.isArray(CBTToolsData.questions)
+            ) {
+                return CBTToolsData.questions[CBTToolsData.index];
+            }
+        } catch (_) {}
 
-    const X = () =>
-        d.querySelectorAll('#options-container .category-row');
+        return null;
+    };
 
     // ==========================================
-    // 2. CSS & BOTTOM SHEET
+    // 2. JUMLAH SOAL OTOMATIS
+    // ==========================================
+    const getTotalQuestions = () => {
+        try {
+            if (
+                typeof examQuestions !== 'undefined' &&
+                Array.isArray(examQuestions) &&
+                examQuestions.length > 0
+            ) {
+                return examQuestions.length;
+            }
+        } catch (_) {}
+
+        try {
+            if (
+                typeof activeQuestions !== 'undefined' &&
+                Array.isArray(activeQuestions) &&
+                activeQuestions.length > 0
+            ) {
+                return activeQuestions.length;
+            }
+        } catch (_) {}
+
+        try {
+            if (
+                typeof CBTToolsData !== 'undefined' &&
+                Array.isArray(CBTToolsData.questions) &&
+                CBTToolsData.questions.length > 0
+            ) {
+                return CBTToolsData.questions.length;
+            }
+        } catch (_) {}
+
+        const grid = d.querySelectorAll(
+            '#question-grid button, [id^="grid-btn-"]'
+        );
+
+        if (grid.length > 0) return grid.length;
+
+        const questionCards = d.querySelectorAll(
+            '[data-question-index], .question-item'
+        );
+
+        return questionCards.length;
+    };
+
+    const getCurrentIndex = () => {
+        try {
+            if (typeof currentQuestionIndex !== 'undefined') {
+                return Number(currentQuestionIndex) || 0;
+            }
+        } catch (_) {}
+
+        try {
+            if (typeof CBTToolsData !== 'undefined') {
+                return Number(CBTToolsData.index) || 0;
+            }
+        } catch (_) {}
+
+        return 0;
+    };
+
+    const O = () => d.querySelectorAll(
+        '#options-container label, #options-container .option-card'
+    );
+
+    const X = () => d.querySelectorAll(
+        '#options-container .category-row'
+    );
+
+    // ==========================================
+    // 3. NAVIGASI SOAL
+    // ==========================================
+    const setCurrentQuestion = index => {
+        try {
+            if (typeof loadQuestion === 'function') {
+                loadQuestion(index);
+                return true;
+            }
+        } catch (_) {}
+
+        try {
+            if (
+                typeof CBTToolsAPI !== 'undefined' &&
+                typeof CBTToolsAPI.goTo === 'function'
+            ) {
+                CBTToolsAPI.goTo(index);
+                return true;
+            }
+        } catch (_) {}
+
+        return false;
+    };
+
+    const goNextQuestion = () => {
+        const total = getTotalQuestions();
+        const nextIndex = getCurrentIndex() + 1;
+
+        if (nextIndex < total) {
+            try {
+                if (typeof loadQuestion === 'function') {
+                    loadQuestion(nextIndex);
+                    return true;
+                }
+            } catch (_) {}
+
+            try {
+                if (
+                    typeof CBTToolsAPI !== 'undefined' &&
+                    typeof CBTToolsAPI.goTo === 'function'
+                ) {
+                    CBTToolsAPI.goTo(nextIndex);
+                    return true;
+                }
+            } catch (_) {}
+        }
+
+        try {
+            if (
+                typeof CBTToolsAPI !== 'undefined' &&
+                typeof CBTToolsAPI.next === 'function'
+            ) {
+                CBTToolsAPI.next();
+                return true;
+            }
+        } catch (_) {}
+
+        return false;
+    };
+
+    // ==========================================
+    // 4. CSS PANEL
     // ==========================================
     const style = d.createElement('style');
 
     style.textContent = `
         .cbtxg {
-            border-color: #22c55e !important;
+            border: 2px solid #22c55e !important;
             background: #f0fdf4 !important;
+            color: #166534 !important;
+            box-shadow: inset 0 0 0 1px #22c55e !important;
         }
 
         #cbtx-overlay {
@@ -75,29 +216,21 @@
             box-sizing: border-box;
             width: 100%;
             max-width: 560px;
-
-            /* Tinggi panel: 45% layar */
             height: 45vh;
             height: 45dvh;
             max-height: 45vh;
             max-height: 45dvh;
-
             overflow-y: auto;
             overscroll-behavior: contain;
             background: #fff;
             color: #1e293b;
-
             padding: 12px 18px calc(20px + env(safe-area-inset-bottom));
-
             border-radius: 28px 28px 0 0;
             box-shadow: 0 -10px 40px rgba(15,23,42,.18);
-
             font-family: system-ui, -apple-system,
                 BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-
             transform: translateY(110%);
             visibility: hidden;
-
             transition:
                 transform .32s cubic-bezier(.16, 1, .3, 1),
                 visibility .32s;
@@ -291,18 +424,16 @@
     d.head.appendChild(style);
 
     // ==========================================
-    // 3. OVERLAY & PANEL
+    // 5. PANEL & TOMBOL
     // ==========================================
     const overlay = d.createElement('div');
     overlay.id = 'cbtx-overlay';
 
     const panel = d.createElement('section');
     panel.id = 'cbtx-modal';
-
     panel.setAttribute('role', 'dialog');
     panel.setAttribute('aria-modal', 'true');
 
-    // Header robot, judul, status dan tombol X dihapus.
     panel.innerHTML = `
         <div class="cbtx-handle"></div>
 
@@ -310,19 +441,22 @@
             <button type="button"
                 class="cbtx-card cbtx-mark"
                 id="btn-mark">
-
                 <div class="cbtx-icon">🎯</div>
                 <div class="cbtx-title">Jawab Soal Ini</div>
-                <div class="cbtx-subtitle">Tandai soal aktif</div>
+                <div class="cbtx-subtitle">
+                    Pilih jawaban dan tandai
+                </div>
             </button>
 
             <button type="button"
                 class="cbtx-card cbtx-auto"
                 id="btn-auto">
-
                 <div class="cbtx-icon">⚡</div>
                 <div class="cbtx-title">Kerjakan Semua</div>
-                <div class="cbtx-subtitle">30 soal otomatis</div>
+                <div class="cbtx-subtitle"
+                    id="cbtx-auto-subtitle">
+                    Memuat jumlah soal…
+                </div>
             </button>
         </div>
 
@@ -332,41 +466,48 @@
                     🏆 Auto di atas KKM
                 </div>
                 <div class="cbtx-kkm-sub">
-                    Skor sedikit di atas target
+                    Target nilai minimal yang dipilih
                 </div>
             </div>
 
             <div class="cbtx-stepper">
-                <button type="button" id="kkm-minus">-</button>
-                <span id="kkm-value">75</span>
-                <button type="button" id="kkm-plus">+</button>
+                <button type="button"
+                    id="kkm-minus"
+                    aria-label="Kurangi KKM">−</button>
+
+                <span id="kkm-value">65</span>
+
+                <button type="button"
+                    id="kkm-plus"
+                    aria-label="Tambah KKM">+</button>
             </div>
         </div>
 
         <button type="button" class="cbtx-key" id="btn-key">
             <span style="font-size:18px">🔑</span>
-
-            <div style="flex:1;">
+            <div style="flex:1">
                 <div class="cbtx-key-title">Lihat Kunci</div>
                 <div class="cbtx-key-sub">
-                    Tampilkan kunci jawaban
+                    Tampilkan kunci soal aktif
                 </div>
             </div>
-
             <span style="font-size:14px;color:#64748b">➡️</span>
         </button>
 
-        <pre class="cbtx-status" id="cbtx-status"></pre>
+        <pre class="cbtx-status"
+            id="cbtx-status"
+            aria-live="polite"></pre>
     `;
 
     d.body.append(overlay, panel);
 
     // ==========================================
-    // 4. BUKA / TUTUP PANEL
+    // 6. BUKA / TUTUP PANEL
     // ==========================================
     function openPanel() {
         overlay.classList.add('active');
         panel.classList.add('active');
+        updateQuestionCountLabel();
     }
 
     function closePanel() {
@@ -374,37 +515,50 @@
         panel.classList.remove('active');
     }
 
-    // Tutup jika area di luar panel ditekan.
-    overlay.onclick = closePanel;
+    overlay.addEventListener('click', closePanel);
 
-    // Escape tetap berfungsi untuk menutup panel.
+    panel.addEventListener('click', e => {
+        e.stopPropagation();
+    });
+
     d.addEventListener('keydown', e => {
         if (e.key === 'Escape') closePanel();
     });
 
-    // Ikon toga sebagai pemicu pembuka jika tersedia.
     const cap = d.querySelector('.fa-graduation-cap');
 
     if (cap && cap.parentElement) {
-        const pr = cap.parentElement;
-        pr.style.cursor = 'pointer';
-        pr.title = 'Buka panel';
-
-        pr.onclick = openPanel;
+        const trigger = cap.parentElement;
+        trigger.style.cursor = 'pointer';
+        trigger.title = 'Buka panel';
+        trigger.addEventListener('click', openPanel);
     }
 
     // ==========================================
-    // 5. STATUS & PENGATURAN KKM
+    // 7. PENGATURAN KKM
     // ==========================================
     const s = panel.querySelector('#cbtx-status');
     const kkmValSpan = panel.querySelector('#kkm-value');
+    const autoSubtitle = panel.querySelector(
+        '#cbtx-auto-subtitle'
+    );
 
-    let targetKKM = 75;
+    let targetKKM = 65;
+
+    function updateQuestionCountLabel() {
+        const total = getTotalQuestions();
+
+        autoSubtitle.textContent = total > 0
+            ? `${total} soal otomatis`
+            : 'Jumlah soal belum terdeteksi';
+    }
 
     panel.querySelector('#kkm-plus').onclick = e => {
         e.stopPropagation();
 
-        if (targetKKM < 95) targetKKM += 5;
+        if (targetKKM < 100) {
+            targetKKM = Math.min(100, targetKKM + 5);
+        }
 
         kkmValSpan.textContent = targetKKM;
     };
@@ -412,250 +566,351 @@
     panel.querySelector('#kkm-minus').onclick = e => {
         e.stopPropagation();
 
-        if (targetKKM > 40) targetKKM -= 5;
+        if (targetKKM > 40) {
+            targetKKM = Math.max(40, targetKKM - 5);
+        }
 
         kkmValSpan.textContent = targetKKM;
     };
 
     // ==========================================
-    // 6. KUNCI JAWABAN
+    // 8. LIHAT KUNCI
     // ==========================================
     function key() {
         const q = Q();
 
         if (!q) {
-            s.textContent = 'Data soal tidak ditemukan.';
+            s.textContent =
+                'Data soal tidak ditemukan. Buka soal terlebih dahulu.';
             return;
         }
 
         const c = q.correct;
 
-        if (q.type === 'category') {
-            s.textContent = c
-                .map((v, i) =>
-                    (i + 1) + '. ' + (v ? 'Benar' : 'Salah')
-                )
-                .join('\n');
+        if (q.type === 'category' && Array.isArray(c)) {
+            s.textContent = c.map((v, i) =>
+                `${i + 1}. ${v ? 'Benar' : 'Salah'}`
+            ).join('\n');
         } else {
-            s.textContent = 'Kunci: ' +
-                (Array.isArray(c)
-                    ? c.map(i => String.fromCharCode(65 + i)).join(', ')
-                    : String.fromCharCode(65 + c));
+            const correctArr = Array.isArray(c) ? c : [c];
+
+            s.textContent = 'Kunci: ' + correctArr.map(i =>
+                typeof i === 'number'
+                    ? String.fromCharCode(65 + i)
+                    : String(i)
+            ).join(', ');
         }
     }
 
     // ==========================================
-    // 7. PENANDA OPSI
+    // 9. JAWAB SOAL INI: PILIH + TANDAI
     // ==========================================
     function mark() {
-        d.querySelectorAll('.cbtxg').forEach(e => {
-            e.classList.remove('cbtxg');
-        });
-
         const q = Q();
 
         if (!q) {
-            s.textContent = 'Data soal tidak ditemukan.';
+            s.textContent =
+                'Data soal tidak ditemukan. Buka soal terlebih dahulu.';
             return;
         }
 
+        d.querySelectorAll(
+            '#options-container .cbtxg'
+        ).forEach(el => {
+            el.classList.remove('cbtxg');
+        });
+
         const c = q.correct;
 
-        if (q.type === 'category') {
-            X().forEach((r, j) => {
-                [...r.querySelectorAll('label')].forEach(l => {
-                    const v =
-                        l.querySelector('input')?.value === 'true';
+        // Soal kategori benar/salah
+        if (q.type === 'category' && Array.isArray(c)) {
+            X().forEach((row, rowIndex) => {
+                [...row.querySelectorAll('label')].forEach(label => {
+                    const input = label.querySelector('input');
 
-                    if (v === c[j]) {
-                        l.classList.add('cbtxg');
+                    if (!input) return;
+
+                    const value = input.value === 'true';
+
+                    if (value === c[rowIndex]) {
+                        label.classList.add('cbtxg');
                     }
                 });
             });
-        } else {
-            const opts = O();
-            const correctArr = Array.isArray(c) ? c : [c];
 
-            correctArr.forEach(j => {
-                if (opts[j]) opts[j].classList.add('cbtxg');
-            });
+            s.textContent =
+                'Jawaban benar pada soal aktif sudah ditandai.';
+            return;
         }
 
-        s.textContent = 'Jawaban benar telah ditandai.';
+        const correctArr = Array.isArray(c) ? c : [c];
+
+        const radios = d.querySelectorAll(
+            '#options-container input[type="radio"]'
+        );
+
+        // Pilih jawaban melalui fungsi halaman bila tersedia.
+        if (radios.length && correctArr.length === 1) {
+            const answerIndex = Number(correctArr[0]);
+
+            try {
+                if (typeof selectAnswer === 'function') {
+                    selectAnswer(answerIndex);
+                } else {
+                    const radio = [
+                        ...d.querySelectorAll(
+                            '#options-container input[type="radio"]'
+                        )
+                    ].find(input =>
+                        Number(input.value) === answerIndex
+                    );
+
+                    if (radio) {
+                        radio.checked = true;
+                        radio.dispatchEvent(
+                            new Event('change', { bubbles: true })
+                        );
+                    }
+                }
+            } catch (_) {}
+        }
+
+        // Cari ulang elemen setelah kemungkinan render ulang.
+        const options = O();
+
+        correctArr.forEach(index => {
+            const option = options[Number(index)];
+
+            if (option) {
+                option.classList.add('cbtxg');
+            }
+        });
+
+        s.textContent =
+            'Jawaban benar dipilih dan ditandai hijau.';
     }
 
     // ==========================================
-    // 8. PEMILIHAN OPSI
+    // 10. PEMILIHAN OPSI
     // ==========================================
     function ans(shouldBeCorrect = true) {
         const q = Q();
 
-        if (!q) {
-            s.textContent = 'Data soal tidak ditemukan.';
-            return;
-        }
+        if (!q) return false;
 
-        const c = q.correct;
-        const correctArr = Array.isArray(c) ? c : [c];
-        const radio = d.querySelectorAll(
-            '#options-container input[type="radio"]'
-        );
+        const correct = q.correct;
+        const correctArr = Array.isArray(correct)
+            ? correct
+            : [correct];
 
-        let targetIndex = correctArr[0];
+        const radios = [
+            ...d.querySelectorAll(
+                '#options-container input[type="radio"]'
+            )
+        ];
 
-        if (!shouldBeCorrect && radio.length > 1) {
-            targetIndex = (correctArr[0] + 1) % radio.length;
-        }
+        if (radios.length > 0) {
+            const correctIndex = Number(correctArr[0]);
+            let targetIndex = correctIndex;
 
-        if (radio.length > 0) {
-            if (radio[targetIndex]) {
-                radio[targetIndex].click();
+            if (!shouldBeCorrect && radios.length > 1) {
+                targetIndex = (correctIndex + 1) % radios.length;
             }
-        } else {
-            const opts = O();
 
-            if (opts[targetIndex]) {
-                opts[targetIndex].click();
-            }
+            const radio = radios.find(input =>
+                Number(input.value) === targetIndex
+            );
+
+            if (!radio) return false;
+
+            radio.click();
+            return true;
         }
+
+        const options = O();
+
+        let targetIndex = Number(correctArr[0]);
+
+        if (!shouldBeCorrect && options.length > 1) {
+            targetIndex = (targetIndex + 1) % options.length;
+        }
+
+        if (options[targetIndex]) {
+            options[targetIndex].click();
+            return true;
+        }
+
+        return false;
     }
 
     // ==========================================
-    // 9. STATUS PROSES
+    // 11. PROSES OTOMATIS & KKM DINAMIS
     // ==========================================
     let isAutoRunning = false;
     let isKKMRunning = false;
+    let runToken = 0;
 
-    // Kontrol otomatis dan pengaturan target KKM
-    // dipertahankan dari implementasi awal.
-    panel.querySelector('#btn-auto').onclick = () => {
+    const autoBtn = panel.querySelector('#btn-auto');
+    const kkmBox = panel.querySelector('#btn-kkm-box');
+
+    function resetAutoButton() {
+        autoBtn.style.background = '#f5f3ff';
+    }
+
+    function resetKKMBox() {
+        kkmBox.style.background = '#ecfdf5';
+    }
+
+    function stopAll() {
+        isAutoRunning = false;
+        isKKMRunning = false;
+        runToken++;
+
+        resetAutoButton();
+        resetKKMBox();
+    }
+
+    function runSequence(mode) {
+        const total = getTotalQuestions();
+
+        if (total <= 0) {
+            s.textContent =
+                'Jumlah soal tidak ditemukan. Pastikan soal sudah dimuat.';
+            return;
+        }
+
+        if (!setCurrentQuestion(0)) {
+            s.textContent =
+                'Navigasi ke soal pertama tidak tersedia.';
+            return;
+        }
+
+        const thisRun = ++runToken;
+
+        const targetCorrect = mode === 'kkm'
+            ? Math.ceil((targetKKM / 100) * total)
+            : total;
+
+        if (mode === 'kkm') {
+            isKKMRunning = true;
+            kkmBox.style.background = '#a7f3d0';
+
+            s.textContent =
+                `Target KKM: ${targetKKM}\n` +
+                `Jumlah soal: ${total}\n` +
+                `Minimal jawaban benar: ${targetCorrect}/${total}\n` +
+                `Nilai minimal yang dapat dicapai: ` +
+                `${Math.round(targetCorrect / total * 10000) / 100}`;
+        } else {
+            isAutoRunning = true;
+            autoBtn.style.background = '#ddd6fe';
+
+            s.textContent =
+                `Proses otomatis: 0/${total} soal`;
+        }
+
+        function stillRunning() {
+            return thisRun === runToken &&
+                (mode === 'kkm'
+                    ? isKKMRunning
+                    : isAutoRunning);
+        }
+
+        function finish(message) {
+            if (mode === 'kkm') {
+                isKKMRunning = false;
+                resetKKMBox();
+            } else {
+                isAutoRunning = false;
+                resetAutoButton();
+            }
+
+            s.textContent = message;
+        }
+
+        function step(processed) {
+            if (!stillRunning()) return;
+
+            const shouldBeCorrect = mode === 'kkm'
+                ? processed < targetCorrect
+                : true;
+
+            if (!ans(shouldBeCorrect)) {
+                finish(
+                    'Tidak bisa memilih opsi pada soal ini. ' +
+                    'Struktur opsi mungkin berbeda.'
+                );
+                return;
+            }
+
+            s.textContent = mode === 'kkm'
+                ? `Proses KKM: ${processed + 1}/${total}\n` +
+                  `Target benar: ${targetCorrect}/${total}`
+                : `Proses otomatis: ${processed + 1}/${total} soal`;
+
+            setTimeout(() => {
+                if (!stillRunning()) return;
+
+                if (processed + 1 >= total) {
+                    finish(
+                        mode === 'kkm'
+                            ? `Proses KKM selesai.\n` +
+                              `Target KKM: ${targetKKM}\n` +
+                              `Target benar: ${targetCorrect} dari ${total} soal.`
+                            : `Proses selesai: ${total} soal diproses.`
+                    );
+
+                    return;
+                }
+
+                if (!goNextQuestion()) {
+                    finish(
+                        'Tidak bisa berpindah ke soal berikutnya. ' +
+                        'Fungsi navigasi tidak ditemukan.'
+                    );
+
+                    return;
+                }
+
+                setTimeout(() => {
+                    step(processed + 1);
+                }, 450);
+            }, 550);
+        }
+
+        step(0);
+    }
+
+    autoBtn.onclick = () => {
         if (isAutoRunning) {
-            isAutoRunning = false;
-
-            panel.querySelector('#btn-auto')
-                .style.background = '#f5f3ff';
-
+            stopAll();
             s.textContent = 'Proses otomatis dihentikan.';
             return;
         }
 
         if (isKKMRunning) return;
 
-        isAutoRunning = true;
-
-        panel.querySelector('#btn-auto')
-            .style.background = '#ddd6fe';
-
-        s.textContent =
-            'Proses otomatis berjalan. Klik lagi untuk berhenti.';
-
-        (function n() {
-            if (!isAutoRunning) return;
-
-            ans(true);
-
-            setTimeout(() => {
-                let idx =
-                    typeof currentQuestionIndex !== 'undefined'
-                        ? currentQuestionIndex
-                        : (typeof CBTToolsData !== 'undefined'
-                            ? CBTToolsData.index
-                            : 0);
-
-                if (idx < 29 && isAutoRunning) {
-                    if (typeof nextQuestion === 'function') {
-                        nextQuestion();
-                    } else if (
-                        typeof CBTToolsAPI !== 'undefined' &&
-                        CBTToolsAPI.next
-                    ) {
-                        CBTToolsAPI.next();
-                    }
-
-                    setTimeout(n, 450);
-                } else {
-                    isAutoRunning = false;
-
-                    panel.querySelector('#btn-auto')
-                        .style.background = '#f5f3ff';
-
-                    mark();
-                    s.textContent = 'Proses selesai.';
-                }
-            }, 550);
-        })();
+        runSequence('all');
     };
 
     panel.querySelector('#btn-kkm').onclick = () => {
         if (isKKMRunning) {
-            isKKMRunning = false;
-
-            panel.querySelector('#btn-kkm-box')
-                .style.background = '#ecfdf5';
-
+            stopAll();
             s.textContent = 'Proses KKM dihentikan.';
             return;
         }
 
         if (isAutoRunning) return;
 
-        isKKMRunning = true;
-
-        panel.querySelector('#btn-kkm-box')
-            .style.background = '#a7f3d0';
-
-        s.textContent = `Target KKM: ${targetKKM}`;
-
-        const totalSoal = 30;
-        const targetBenar =
-            Math.ceil((targetKKM / 100) * totalSoal) + 1;
-
-        (function loopKKM(currentIndex = 0) {
-            if (!isKKMRunning) return;
-
-            const shouldBeCorrect = currentIndex < targetBenar;
-
-            ans(shouldBeCorrect);
-
-            setTimeout(() => {
-                const idx =
-                    typeof currentQuestionIndex !== 'undefined'
-                        ? currentQuestionIndex
-                        : (typeof CBTToolsData !== 'undefined'
-                            ? CBTToolsData.index
-                            : 0);
-
-                if (idx < totalSoal - 1 && isKKMRunning) {
-                    if (typeof nextQuestion === 'function') {
-                        nextQuestion();
-                    } else if (
-                        typeof CBTToolsAPI !== 'undefined' &&
-                        CBTToolsAPI.next
-                    ) {
-                        CBTToolsAPI.next();
-                    }
-
-                    setTimeout(() => loopKKM(idx + 1), 450);
-                } else {
-                    isKKMRunning = false;
-
-                    panel.querySelector('#btn-kkm-box')
-                        .style.background = '#ecfdf5';
-
-                    mark();
-
-                    s.textContent =
-                        `Proses KKM selesai. Target: ${targetKKM}.`;
-                }
-            }, 550);
-        })();
+        runSequence('kkm');
     };
 
     panel.querySelector('#btn-key').onclick = key;
     panel.querySelector('#btn-mark').onclick = mark;
 
     // ==========================================
-    // 10. TAMPILKAN PANEL SAAT SCRIPT DIMUAT
+    // 12. TAMPILKAN PANEL
     // ==========================================
+    updateQuestionCountLabel();
     openPanel();
 })();
