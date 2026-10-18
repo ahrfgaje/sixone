@@ -1,228 +1,446 @@
+
 (() => {
-    if (window.CBTX) return;
-    window.CBTX = 1;
+    if (window.CBTX_UI) return;
+    window.CBTX_UI = true;
 
-    // Bypass Anti-Cheat
-    window.handleAntiCheatViolation = function () {};
-    ['contextmenu', 'copy', 'cut', 'paste', 'keydown', 'visibilitychange', 'blur'].forEach(ev => {
-        window.addEventListener(ev, e => e.stopImmediatePropagation(), true);
-    });
-    const mc = document.getElementById('cheat-modal');
-    if (mc) mc.classList.add('hidden');
+    const d = document;
 
-    const d = document,
-          Q = () => examQuestions[currentQuestionIndex] || CBTToolsData.questions[CBTToolsData.index],
-          O = () => d.querySelectorAll('#options-container label, #options-container .option-card'),
-          X = () => d.querySelectorAll('#options-container .category-row');
+    // =========================
+    // 1. CSS DAN ANIMASI
+    // =========================
+    const style = d.createElement("style");
 
-    // Tambahkan CSS Keyframes untuk Animasi Slide Up dari Bawah
-    let st = d.createElement('style');
-    st.textContent = `
-        @keyframes slideUp {
-            from { transform: translate(-50%, 40px); opacity: 0; }
-            to { transform: translate(-50%, -50%); opacity: 1; }
+    style.textContent = `
+        #cbtx-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 2147483645;
+            background: rgba(15, 23, 42, .38);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity .25s ease,
+                        visibility .25s ease;
         }
-        .cbtxg { border-color: #22c55e !important; background: #f0fdf4 !important; }
-    `;
-    d.head.append(st);
 
-    // Buat Panel Modal Asisten AI dengan Tampilan Baru & Animasi
-    let p = d.createElement('div');
-    p.id = 'cbtx-modal';
-    p.style = 'display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:2147483647;background:#fff;width:90%;max-width:380px;padding:20px;border-radius:24px;box-shadow:0 10px 30px rgba(0,0,0,0.2);font-family:system-ui,sans-serif;animation:slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);';
-    p.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <div style="display:flex;align-items:center;gap:10px;">
-                <div style="background:#e0e7ff;color:#4338ca;padding:8px 10px;border-radius:50%;font-size:16px;">🤖</div>
-                <div>
-                    <b style="font-size:16px;color:#1e293b;display:block;">Asisten AI</b>
-                    <span style="font-size:12px;color:#10b981;">● Siap membantu</span>
+        #cbtx-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #cbtx-modal {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            top: auto;
+            z-index: 2147483646;
+            box-sizing: border-box;
+            width: 100%;
+            max-width: 560px;
+            max-height: 85vh;
+            max-height: 85dvh;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            background: #fff;
+            color: #1e293b;
+            padding: 12px 18px
+                calc(20px + env(safe-area-inset-bottom));
+            border-radius: 28px 28px 0 0;
+            box-shadow: 0 -10px 40px rgba(15,23,42,.18);
+            font-family: system-ui, sans-serif;
+            box-sizing: border-box;
+            transform: translateY(110%);
+            visibility: hidden;
+            transition: transform .32s
+                cubic-bezier(.16, 1, .3, 1),
+                visibility .32s;
+        }
+
+        #cbtx-modal.active {
+            transform: translateY(0);
+            visibility: visible;
+        }
+
+        #cbtx-modal * {
+            box-sizing: border-box;
+        }
+
+        #cbtx-modal .cbtx-handle {
+            width: 48px;
+            height: 5px;
+            border-radius: 20px;
+            background: #cbd5e1;
+            margin: 0 auto 22px;
+        }
+
+        #cbtx-modal .cbtx-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        #cbtx-modal .cbtx-card {
+            min-width: 0;
+            padding: 17px 14px;
+            border: 1px solid;
+            border-radius: 20px;
+            cursor: pointer;
+            text-align: left;
+            font: inherit;
+            transition: transform .15s, filter .15s;
+        }
+
+        #cbtx-modal .cbtx-card:active {
+            transform: scale(.98);
+        }
+
+        #cbtx-modal .cbtx-mark {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+            color: #1d4ed8;
+        }
+
+        #cbtx-modal .cbtx-auto {
+            background: #f5f3ff;
+            border-color: #ddd6fe;
+            color: #6d28d9;
+        }
+
+        #cbtx-modal .cbtx-icon {
+            font-size: 25px;
+            margin-bottom: 10px;
+        }
+
+        #cbtx-modal .cbtx-title {
+            font-weight: 750;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        #cbtx-modal .cbtx-subtitle {
+            font-size: 12px;
+            margin-top: 5px;
+            opacity: .72;
+            line-height: 1.4;
+        }
+
+        #cbtx-modal .cbtx-kkm {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+            border: 1px solid #a7f3d0;
+            border-radius: 20px;
+            background: #ecfdf5;
+        }
+
+        #cbtx-modal .cbtx-kkm-info {
+            min-width: 0;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        #cbtx-modal .cbtx-kkm-title {
+            color: #047857;
+            font-weight: 750;
+            font-size: 14px;
+        }
+
+        #cbtx-modal .cbtx-kkm-sub {
+            color: #059669;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        #cbtx-modal .cbtx-stepper {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            padding: 5px;
+            border: 1px solid #d1fae5;
+            background: white;
+            border-radius: 13px;
+            flex-shrink: 0;
+        }
+
+        #cbtx-modal .cbtx-stepper button {
+            width: 30px;
+            height: 30px;
+            border: 0;
+            border-radius: 9px;
+            background: #e2e8f0;
+            color: #334155;
+            font-size: 19px;
+            font-weight: 750;
+            cursor: pointer;
+        }
+
+        #cbtx-modal #kkm-value {
+            min-width: 25px;
+            text-align: center;
+            color: #047857;
+            font-weight: 800;
+        }
+
+        #cbtx-modal .cbtx-key {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-align: left;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            background: #f8fafc;
+            color: #334155;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        #cbtx-modal .cbtx-key-main {
+            flex: 1;
+        }
+
+        #cbtx-modal .cbtx-key-title {
+            font-size: 15px;
+            font-weight: 750;
+        }
+
+        #cbtx-modal .cbtx-key-sub {
+            margin-top: 4px;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        #cbtx-modal .cbtx-status {
+            padding: 13px 15px;
+            border-radius: 17px;
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.6;
+            white-space: pre-line;
+            overflow-wrap: anywhere;
+        }
+
+        #cbtx-modal .cbtx-close-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+
+        #cbtx-modal .cbtx-close {
+            padding: 8px 14px;
+            border: 0;
+            border-radius: 10px;
+            background: #e2e8f0;
+            color: #334155;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        @media (min-width: 600px) {
+            #cbtx-modal {
+                left: 50%;
+                right: auto;
+                width: min(560px, 100%);
+                transform: translate(-50%, 110%);
+                border-radius: 28px 28px 0 0;
+            }
+
+            #cbtx-modal.active {
+                transform: translate(-50%, 0);
+            }
+        }
+
+        @media (max-width: 360px) {
+            #cbtx-modal {
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+
+            #cbtx-modal .cbtx-card {
+                padding: 13px 10px;
+            }
+
+            #cbtx-modal .cbtx-kkm {
+                padding: 10px;
+            }
+
+            #cbtx-modal .cbtx-stepper {
+                gap: 4px;
+            }
+
+            #cbtx-modal .cbtx-stepper button {
+                width: 26px;
+                height: 28px;
+            }
+        }
+    `;
+
+    d.head.appendChild(style);
+
+    // =========================
+    // 2. OVERLAY DAN PANEL
+    // =========================
+    const overlay = d.createElement("div");
+    overlay.id = "cbtx-overlay";
+
+    const panel = d.createElement("section");
+    panel.id = "cbtx-modal";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+    panel.setAttribute("aria-label", "Menu latihan");
+
+    panel.innerHTML = `
+        <div class="cbtx-handle"></div>
+
+        <div class="cbtx-grid">
+            <button type="button"
+                    class="cbtx-card cbtx-mark"
+                    id="btn-mark">
+                <div class="cbtx-icon">🎯</div>
+                <div class="cbtx-title">Jawab Soal Ini</div>
+                <div class="cbtx-subtitle">
+                    Tandai soal aktif
+                </div>
+            </button>
+
+            <button type="button"
+                    class="cbtx-card cbtx-auto"
+                    id="btn-auto">
+                <div class="cbtx-icon">⚡</div>
+                <div class="cbtx-title">Kerjakan Semua</div>
+                <div class="cbtx-subtitle">
+                    Mode latihan
+                </div>
+            </button>
+        </div>
+
+        <div class="cbtx-kkm">
+            <div class="cbtx-kkm-info" id="btn-kkm">
+                <div class="cbtx-kkm-title">
+                    🏆 Auto di atas KKM
+                </div>
+                <div class="cbtx-kkm-sub">
+                    Skor sedikit di atas target
                 </div>
             </div>
-            <button id="cbtx-close" style="background:none;border:none;font-size:20px;color:#64748b;cursor:pointer;">&times;</button>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-            <div id="btn-mark" style="background:#eff6ff;border:1px solid #bfdbfe;padding:14px;border-radius:16px;cursor:pointer;">
-                <div style="color:#2563eb;font-size:18px;margin-bottom:6px;">🎯</div>
-                <div style="font-weight:bold;font-size:13px;color:#1e40af;">Jawab Soal Ini</div>
-                <div style="font-size:11px;color:#60a5fa;">Tandai soal aktif</div>
-            </div>
-            <div id="btn-auto" style="background:#f5f3ff;border:1px solid #ddd6fe;padding:14px;border-radius:16px;cursor:pointer;">
-                <div style="color:#7c3aed;font-size:18px;margin-bottom:6px;">⚡</div>
-                <div style="font-weight:bold;font-size:13px;color:#6d28d9;">Kerjakan Semua</div>
-                <div style="font-size:11px;color:#a78bfa;">30 soal otomatis</div>
+
+            <div class="cbtx-stepper">
+                <button type="button" id="kkm-minus"
+                        aria-label="Kurangi KKM">−</button>
+                <span id="kkm-value">75</span>
+                <button type="button" id="kkm-plus"
+                        aria-label="Tambah KKM">+</button>
             </div>
         </div>
-        <!-- FITUR BARU: AUTO DI ATAS KKM -->
-        <div id="btn-kkm-box" style="background:#ecfdf5;border:1px solid #a7f3d0;padding:12px 14px;border-radius:16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
-            <div id="btn-kkm" style="cursor:pointer;flex-grow:1;">
-                <div style="font-weight:bold;font-size:13px;color:#047857;">🏆 Auto di atas KKM</div>
-                <div style="font-size:11px;color:#059669;">Skor sedikit di atas target</div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;background:#fff;padding:4px 8px;border-radius:10px;border:1px solid #d1fae5;">
-                <button id="kkm-minus" style="border:none;background:#e2e8f0;width:24px;height:24px;border-radius:6px;font-weight:bold;cursor:pointer;">-</button>
-                <span id="kkm-value" style="font-weight:bold;font-size:13px;color:#047857;min-width:20px;text-align:center;">75</span>
-                <button id="kkm-plus" style="border:none;background:#e2e8f0;width:24px;height:24px;border-radius:6px;font-weight:bold;cursor:pointer;">+</button>
-            </div>
+
+        <button type="button" class="cbtx-key" id="btn-key">
+            <span style="font-size:25px">🔑</span>
+            <span class="cbtx-key-main">
+                <span class="cbtx-key-title">Lihat Kunci</span>
+                <span class="cbtx-key-sub" style="display:block">
+                    Informasi fitur latihan
+                </span>
+            </span>
+            <span style="font-size:22px">➡️</span>
+        </button>
+
+        <div class="cbtx-status" id="cbtx-status"
+             role="status" aria-live="polite">
+            Status: Siap
+            Silakan pilih fitur di atas.
         </div>
-        <div id="btn-key" style="background:#f8fafc;border:1px solid #e2e8f0;padding:12px 14px;border-radius:16px;cursor:pointer;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
-            <div>
-                <div style="font-weight:bold;font-size:13px;color:#334155;">🔑 Lihat Kunci</div>
-                <div style="font-size:11px;color:#64748b;">Tampilkan kunci jawaban</div>
-            </div>
-            <span style="font-size:16px;">➡️</span>
+
+        <div class="cbtx-close-row">
+            <button type="button" class="cbtx-close"
+                    id="cbtx-close">Tutup</button>
         </div>
-        <pre id="cbtx-status" style="background:#f8fafc;padding:10px;border-radius:12px;font-size:11px;color:#334155;max-height:100px;overflow-y:auto;white-space:pre-line;margin:0;"></pre>
     `;
-    d.body.append(p);
 
-    // Hubungkan dengan ikon topi toga di pojok kiri atas header
-    const cap = d.querySelector('.fa-graduation-cap');
+    d.body.append(overlay, panel);
+
+    // =========================
+    // 3. BUKA DAN TUTUP PANEL
+    // =========================
+    function openPanel() {
+        overlay.classList.add("active");
+        panel.classList.add("active");
+    }
+
+    function closePanel() {
+        overlay.classList.remove("active");
+        panel.classList.remove("active");
+    }
+
+    panel.querySelector("#cbtx-close").onclick = closePanel;
+    overlay.onclick = closePanel;
+
+    d.addEventListener("keydown", e => {
+        if (e.key === "Escape") closePanel();
+    });
+
+    // Hubungkan ke ikon toga yang sudah ada di halaman.
+    const cap = d.querySelector(".fa-graduation-cap");
+
     if (cap && cap.parentElement) {
-        let pr = cap.parentElement;
-        pr.style.position = 'relative';
-        pr.style.cursor = 'pointer';
-        pr.title = 'Klik untuk buka Asisten AI';
-        pr.onclick = () => p.style.display = p.style.display === 'block' ? 'none' : 'block';
+        const trigger = cap.parentElement;
+        trigger.style.cursor = "pointer";
+        trigger.title = "Buka menu latihan";
+        trigger.addEventListener("click", openPanel);
     }
 
-    p.querySelector('#cbtx-close').onclick = () => p.style.display = 'none';
-    let s = p.querySelector('#cbtx-status');
-
-    // Logika Pengaturan Nilai KKM (+ dan -)
+    // =========================
+    // 4. PENGATUR KKM
+    // =========================
     let targetKKM = 75;
-    const kkmValSpan = p.querySelector('#kkm-value');
-    p.querySelector('#kkm-plus').onclick = (e) => {
-        e.stopPropagation();
-        if (targetKKM < 95) targetKKM += 5;
-        kkmValSpan.textContent = targetKKM;
-    };
-    p.querySelector('#kkm-minus').onclick = (e) => {
-        e.stopPropagation();
-        if (targetKKM > 40) targetKKM -= 5;
-        kkmValSpan.textContent = targetKKM;
+    const kkmValue = panel.querySelector("#kkm-value");
+    const status = panel.querySelector("#cbtx-status");
+
+    panel.querySelector("#kkm-plus").onclick = () => {
+        targetKKM = Math.min(95, targetKKM + 5);
+        kkmValue.textContent = targetKKM;
+        status.textContent =
+            `Status: Siap\nTarget KKM: ${targetKKM}`;
     };
 
-    function key() {
-        let q = Q(), c = q.correct;
-        if (q.type === 'category') s.textContent = c.map((v, i) => i + 1 + '. ' + (v ? 'Benar' : 'Salah')).join('\n');
-        else s.textContent = 'Kunci: ' + (Array.isArray(c) ? c.map(i => String.fromCharCode(65 + i)).join(', ') : String.fromCharCode(65 + c));
-    }
-
-    function mark() {
-        d.querySelectorAll('.cbtxg').forEach(e => e.classList.remove('cbtxg'));
-        let q = Q(), c = q.correct;
-        if (q.type === 'category') {
-            X().forEach((r, j) => [...r.querySelectorAll('label')].forEach(l => {
-                let v = l.querySelector('input')?.value === 'true';
-                if (v === c[j]) l.classList.add('cbtxg');
-            }));
-        } else {
-            let opts = O();
-            let correctArr = Array.isArray(c) ? c : [c];
-            correctArr.forEach(j => { if (opts[j]) opts[j].classList.add('cbtxg'); });
-        }
-        s.textContent = 'Jawaban benar telah ditandai.';
-    }
-
-    function ans(shouldBeCorrect = true) {
-        let q = Q(), c = q.correct;
-        let correctArr = Array.isArray(c) ? c : [c];
-        let radio = d.querySelectorAll('#options-container input[type="radio"]');
-        
-        let targetIndex = correctArr[0];
-        if (!shouldBeCorrect && radio.length > 1) {
-            // Pilih opsi yang sengaja salah agar skor pas di atas KKM
-            targetIndex = (correctArr[0] + 1) % radio.length;
-        }
-
-        if (radio.length > 0) {
-            if (radio[targetIndex]) radio[targetIndex].click();
-        } else {
-            let opts = O();
-            if (opts[targetIndex]) opts[targetIndex].click();
-        }
-    }
-
-    // Variabel kontrol status Auto (bisa di-stop saat diklik lagi)
-    let isAutoRunning = false;
-    let isKKMRunning = false;
-
-    p.querySelector('#btn-auto').onclick = () => {
-        if (isAutoRunning) {
-            isAutoRunning = false;
-            p.querySelector('#btn-auto').style.background = '#f5f3ff';
-            s.textContent = "Proses otomatis dihentikan.";
-            return;
-        }
-        if (isKKMRunning) return;
-
-        isAutoRunning = true;
-        p.querySelector('#btn-auto').style.background = '#ddd6fe';
-        s.textContent = "Menjalankan auto 30 soal (Klik lagi untuk berhenti)...";
-
-        (function n() {
-            if (!isAutoRunning) return;
-            ans(true);
-            setTimeout(() => {
-                let idx = typeof currentQuestionIndex !== 'undefined' ? currentQuestionIndex : (typeof CBTToolsData !== 'undefined' ? CBTToolsData.index : 0);
-                if (idx < 29 && isAutoRunning) {
-                    if (typeof nextQuestion === 'function') nextQuestion();
-                    else if (typeof CBTToolsAPI !== 'undefined' && CBTToolsAPI.next) CBTToolsAPI.next();
-                    setTimeout(n, 450);
-                } else {
-                    isAutoRunning = false;
-                    p.querySelector('#btn-auto').style.background = '#f5f3ff';
-                    mark();
-                    s.textContent = "Selesai otomatis!";
-                }
-            }, 550);
-        })();
+    panel.querySelector("#kkm-minus").onclick = () => {
+        targetKKM = Math.max(40, targetKKM - 5);
+        kkmValue.textContent = targetKKM;
+        status.textContent =
+            `Status: Siap\nTarget KKM: ${targetKKM}`;
     };
 
-    // Logika Eksekusi Tombol "Auto di atas KKM"
-    p.querySelector('#btn-kkm').onclick = () => {
-        if (isKKMRunning) {
-            isKKMRunning = false;
-            p.querySelector('#btn-kkm-box').style.background = '#ecfdf5';
-            s.textContent = "Proses KKM dihentikan.";
-            return;
-        }
-        if (isAutoRunning) return;
-
-        isKKMRunning = true;
-        p.querySelector('#btn-kkm-box').style.background = '#a7f3d0';
-        s.textContent = `Menjalankan auto target KKM ${targetKKM}...`;
-
-        let totalSoal = 30; // Umumnya 30 soal
-        let targetBenar = Math.ceil((targetKKM / 100) * totalSoal) + 1; // Dilebihkan 1 soal agar aman di atas KKM
-
-        (function loopKKM(currentIndex = 0) {
-            if (!isKKMRunning) return;
-
-            // Tentukan apakah soal ini harus dijawab benar atau salah berdasarkan target KKM
-            let shouldBeCorrect = currentIndex < targetBenar;
-            ans(shouldBeCorrect);
-
-            setTimeout(() => {
-                let idx = typeof currentQuestionIndex !== 'undefined' ? currentQuestionIndex : (typeof CBTToolsData !== 'undefined' ? CBTToolsData.index : 0);
-                if (idx < totalSoal - 1 && isKKMRunning) {
-                    if (typeof nextQuestion === 'function') nextQuestion();
-                    else if (typeof CBTToolsAPI !== 'undefined' && CBTToolsAPI.next) CBTToolsAPI.next();
-                    setTimeout(() => loopKKM(idx + 1), 450);
-                } else {
-                    isKKMRunning = false;
-                    p.querySelector('#btn-kkm-box').style.background = '#ecfdf5';
-                    mark();
-                    s.textContent = `Selesai! Skor disesuaikan di atas KKM ${targetKKM}.`;
-                }
-            }, 550);
-        })();
+    // =========================
+    // 5. AKSI UI
+    // =========================
+    panel.querySelector("#btn-mark").onclick = () => {
+        status.textContent =
+            "Fitur dipilih: Jawab Soal Ini.";
     };
 
-    p.querySelector('#btn-key').onclick = key;
-    p.querySelector('#btn-mark').onclick = mark;
+    panel.querySelector("#btn-auto").onclick = () => {
+        status.textContent =
+            "Mode latihan dipilih. Belum ada proses otomatis yang dijalankan.";
+    };
 
-    // Otomatis langsung buka panel dengan animasi saat script dimuat
-    p.style.display = 'block';
+    panel.querySelector("#btn-kkm").onclick = () => {
+        status.textContent =
+            `Target KKM saat ini: ${targetKKM}.\n` +
+            "Pengaturan target tersimpan selama halaman terbuka.";
+    };
+
+    panel.querySelector("#btn-key").onclick = () => {
+        status.textContent =
+            "Menu informasi kunci dipilih. " +
+            "Panel UI ini tidak mengambil atau menampilkan kunci jawaban.";
+    };
+
+    // Tampilkan saat script dimuat.
+    openPanel();
 })();
